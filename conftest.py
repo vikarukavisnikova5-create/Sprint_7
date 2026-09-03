@@ -1,13 +1,22 @@
 import pytest
-import requests
 
+from courier_api import create_courier, delete_courier, login_courier
+from order_api import cancel_order, create_order
 from utils import BASE_URL, generate_courier_data, generate_order_data
 
 
 @pytest.fixture
 def courier_data():
-    """Просто данные для регистрации курьера, без создания на сервере."""
-    return generate_courier_data()
+    """Данные для регистрации курьера, без создания курьера на сервере.
+    Если тест сам создаст курьера этими данными, фикстура удалит его
+    после теста"""
+    data = generate_courier_data()
+
+    yield data
+
+    login_response = login_courier({'login': data['login'], 'password': data['password']})
+    if login_response.status_code == 200:
+        delete_courier(login_response.json()['id'])
 
 
 @pytest.fixture
@@ -15,11 +24,10 @@ def registered_courier():
     """
     Создаёт курьера на сервере и гарантированно удаляет его после теста,
     даже если тест сам успел (или не успел) удалить курьера.
-    Возвращает dict с login/password/firstName и id (id заполняется лениво).
+    Возвращает dict с login/password/firstName, id и deleted
     """
     data = generate_courier_data()
-    response = requests.post(f'{BASE_URL}/courier', json=data)
-    assert response.status_code == 201, 'Не удалось создать курьера для теста'
+    create_courier(data)
 
     state = {**data, 'id': None, 'deleted': False}
 
@@ -30,34 +38,21 @@ def registered_courier():
 
     courier_id = state['id']
     if courier_id is None:
-        login_response = requests.post(
-            f'{BASE_URL}/courier/login',
-            json={'login': data['login'], 'password': data['password']},
-        )
+        login_response = login_courier({'login': data['login'], 'password': data['password']})
         if login_response.status_code == 200:
             courier_id = login_response.json().get('id')
 
     if courier_id is not None:
-        requests.delete(f'{BASE_URL}/courier/{courier_id}')
+        delete_courier(courier_id)
 
 
 @pytest.fixture
 def created_order():
+    """Создаёт заказ на сервере и гарантированно отменяет его после теста."""
     data = generate_order_data()
 
-    response = requests.post(
-        f'{BASE_URL}/orders',
-        json=data,
-    )
-
-    assert response.status_code == 201, (
-        f'Не удалось создать заказ для теста: '
-        f'{response.status_code} {response.text}'
-    )
-
+    response = create_order(data)
     track = response.json().get('track')
-
-    assert track is not None, 'API не вернул track созданного заказа'
 
     state = {
         'response': response,
@@ -66,11 +61,5 @@ def created_order():
 
     yield state
 
-    requests.put(
-        f'{BASE_URL}/orders/cancel',
-        params={'track': track},
-    )
-
-
-
-
+    if track is not None:
+        cancel_order(track)

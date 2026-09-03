@@ -1,7 +1,6 @@
 import allure
-import requests
 
-from utils import BASE_URL
+from order_api import get_orders_list
 
 
 @allure.feature('Заказ')
@@ -10,7 +9,7 @@ class TestOrdersList:
 
     @allure.title('Тело ответа содержит список заказов')
     def test_get_orders_list_returns_orders(self):
-        response = requests.get(f'{BASE_URL}/orders')
+        response = get_orders_list()
 
         assert response.status_code == 200
         assert 'orders' in response.json()

@@ -1,8 +1,8 @@
 import allure
 import pytest
-import requests
 
-from utils import BASE_URL, COLOR_BLACK, COLOR_GREY, generate_order_data
+from order_api import cancel_order, create_order
+from utils import COLOR_BLACK, COLOR_GREY, generate_order_data
 
 
 @allure.feature('Заказ')
@@ -20,13 +20,14 @@ class TestOrderCreate:
         ],
         ids=['без цвета', 'BLACK', 'GREY', 'BLACK и GREY'],
     )
-    def test_create_order_with_different_colors(self, color):
+    def test_create_order_with_different_colors(self, color, request):
         payload = generate_order_data(color=color)
 
-        response = requests.post(f'{BASE_URL}/orders', json=payload)
+        response = create_order(payload)
+        track = response.json().get('track')
+        if track is not None:
+
+         request.addfinalizer(lambda: cancel_order(track))
 
         assert response.status_code == 201
         assert 'track' in response.json()
-
-        track = response.json()['track']
-        requests.put(f'{BASE_URL}/orders/cancel', params={'track': track})
