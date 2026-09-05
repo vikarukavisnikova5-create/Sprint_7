@@ -29,27 +29,20 @@ def registered_courier():
     data = generate_courier_data()
     create_courier(data)
 
-    state = {**data, 'id': None, 'deleted': False}
+    yield data
 
-    yield state
-
-    if state['deleted']:
-        return
-
-    courier_id = state['id']
-    if courier_id is None:
-        login_response = login_courier({'login': data['login'], 'password': data['password']})
-        if login_response.status_code == 200:
-            courier_id = login_response.json().get('id')
-
-    if courier_id is not None:
-        delete_courier(courier_id)
+    login_response = login_courier({'login': data['login'], 'password': data['password']})
+    if login_response.status_code == 200:
+        delete_courier(login_response.json()['id'])
 
 
 @pytest.fixture
-def created_order():
-    """Создаёт заказ на сервере и гарантированно отменяет его после теста."""
-    data = generate_order_data()
+def created_order(request):
+    """ Создаёт заказ и гарантированно отменяет его после теста.
+    Цвет можно передать через indirect-параметризацию:
+    @pytest.mark.parametrize('created_order', [[COLOR_BLACK]]."""
+    color = getattr(request, 'param', None)
+    data = generate_order_data(color)
 
     response = create_order(data)
     track = response.json().get('track')

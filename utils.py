@@ -2,6 +2,7 @@ import random
 import string
 import time
 
+import allure
 import requests
 
 
@@ -12,7 +13,7 @@ COLOR_GREY = 'GREY'
 
 RETRYABLE_STATUS_CODES = {502, 503, 504}
 
-
+@allure.step('Выполнить запрос с повторами при 502/503/504')
 def request_with_retry(method: str, url: str, retries: int = 3, delay: float = 1.0, **kwargs):
     """
     Делает запрос requests.request(method, url, **kwargs).

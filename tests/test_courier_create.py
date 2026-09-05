@@ -3,8 +3,6 @@ import pytest
 
 from courier_api import create_courier
 
-from utils import BASE_URL
-
 
 @allure.feature('Курьер')
 @allure.story('Создание курьера')
